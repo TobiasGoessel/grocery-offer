@@ -1,0 +1,6 @@
+offer_finder:
+  edeka_path: "Enter your Edeka-URL here."
+  penny_path: "Enter your Penny-URL here."
+  standardeinkauf_path: "Enter your path to standard_einkauf.csv here"
+  data_path: "Enter your data-path here; probably: ..//data//"
+  debug: False
