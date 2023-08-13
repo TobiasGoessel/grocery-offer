@@ -47,10 +47,10 @@ args = parser.parse_args()
 
 if __name__ == "__main__":
     if args.action == "compare":
-        cfg_file = configloader(path="../data/config/config_higgins.yaml")
+        cfg_file = configloader(path="..\\data\\config\\config_higgins.yaml")
         compare_reader(cfg_file)
         print("Shopping list has been generated.")
     if args.action == "download":
-        cfg_file = configloader(path="../data/config/config_higgins.yaml")
+        cfg_file = configloader(path="..\\data\\config\\config_higgins.yaml")
         downloaded_offers = download_offers(cfg=cfg_file)
         print("Weekly offers has been downloaded.")

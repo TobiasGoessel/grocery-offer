@@ -7,7 +7,7 @@ from selenium.webdriver import Chrome
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
 from glob import glob
-
+import json
 
 def penny_from_web(url: str):
     # Creating and configuring options for selenium-browser
@@ -67,6 +67,109 @@ def edeka_from_web(url: str):
         time.sleep(0.5)
     soup = BeautifulSoup(driver.page_source, "lxml")
     return soup
+
+
+def lidl_from_web(url: str):
+    options = Options()
+    user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/' \
+                 '60.0.3112.50 Safari/537.36'
+    options.add_argument(f'user-agent={user_agent}')
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--proxy-server='direct://'")
+    options.add_argument("--proxy-bypass-list=*")
+    options.add_argument("--start-maximized")
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument("--headless")
+    options.add_argument('log-level=3')
+    # open Chrome Browser with options
+    driver = Chrome(options=options)
+    driver.get(url)
+    for number in range(0, 20):
+        number = number * 2000
+        driver.execute_script(f"window.scrollTo(0, {number})")
+        time.sleep(0.5)
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    headers = soup.find("ol", class_="n-header__main-navigation n-header__navigation-list n-header__subnavigation-list")
+    navigation_elements = headers.find_all("a")
+    for elem in navigation_elements:
+        if elem.get("data-ga-label") == "Filial-Angebote":
+            branch_offers_url = url + elem.get("href")
+
+    urls = []
+    driver.get(branch_offers_url)
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    hero_stage_categories = soup.find("div", class_="ATheHeroStage")
+    offer_categories = hero_stage_categories.find_all("div", role="gridcell")
+    wochentage = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    for category in offer_categories:
+        category_button = category.find("a", class_="ATheHeroStage__OfferAnchor")
+        date_text = category_button.find("h4").text
+        date_text = re.sub(r'\s+', ' ', date_text).strip()
+        if not any(wochentag in date_text for wochentag in wochentage):
+            date_text = ""
+
+        if "channel=store" in str(category_button):
+            if "https://" in category_button.get("href"):
+                urls.append({category_button.get("href"): date_text})
+            else:
+                urls.append({url+category_button.get("href"): date_text})
+    return urls
+
+
+def lidl_to_pandas(urls: list):
+    options = Options()
+    user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/' \
+                 '60.0.3112.50 Safari/537.36'
+    options.add_argument(f'user-agent={user_agent}')
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--proxy-server='direct://'")
+    options.add_argument("--proxy-bypass-list=*")
+    options.add_argument("--start-maximized")
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument("--headless")
+    options.add_argument('log-level=3')
+    # open Chrome Browser with options
+    driver = Chrome(options=options)
+
+    offer_data = pd.DataFrame()
+    for url in urls:
+        if list(url.values())[0] != "":
+            date_string_index = list(url.values())[0].find("Ab")
+            date_text_result = list(url.values())[0][date_string_index:]
+        else:
+            date_text_result = list(url.values())[0]
+        # Die Seite herunterladen
+        driver.get(list(url.keys())[0])
+
+        # BeautifulSoup verwenden, um die HTML-Struktur zu analysieren
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+
+        # Finde alle Angebote auf der Seite (je nach HTML-Struktur anpassen)
+        angebote = soup.find_all("ol", class_="ACampaignGrid")
+
+        # Schleife durch die gefundenen Angebote und extrahiere relevante Informationen
+        for angebot in angebote:
+            produkt_kategorien = angebot.find_all("li", class_="ACampaignGrid__item ACampaignGrid__item--product")
+            for produkt in produkt_kategorien:
+                div_tag = produkt.find("div", class_="AProductGridBox")
+                deeper_tag = div_tag.find("div", class_="detail__grids")
+                deeper_price_tage = json.loads(deeper_tag.get("data-grid-data"))
+                product_data = {"Produkt":div_tag.get("fulltitle"), "Preis": deeper_price_tage[0]["price"]["price"],
+                                "Kategorie": div_tag["category"], "Datum": date_text_result}
+                offer_data = pd.concat([offer_data, pd.DataFrame.from_dict(product_data, orient="index").T],
+                                       ignore_index=True)
+    offer_data.to_csv()
+    return offer_data.to_csv(f"..\\data\\grocery_offers\\lidl_wochenangebote.csv",
+                            decimal=",", sep=";", encoding="UTF-8-sig", index=False)
 
 
 def penny_to_pandas(soup, cfg: dict):
@@ -375,5 +478,7 @@ def reader(cfg: dict):
 
 
 if __name__ == "__main__":
-    penny_link = ""
-    penny_to_pandas(penny_from_web(penny_link))
+    links = lidl_from_web("https://www.lidl.de/")
+    offers = lidl_to_pandas(links)
+    """penny_link = "https://www.penny.de/angebote/15A-03"
+    penny_to_pandas(penny_from_web(penny_link))"""
