@@ -9,7 +9,13 @@ from selenium.common.exceptions import TimeoutException
 from glob import glob
 import json
 
+
 def penny_from_web(url: str):
+    """
+    This function takes the url from penny-url and returns a BeautifulSoup-object.
+    :param url:
+    :return:
+    """
     # Creating and configuring options for selenium-browser
     options = Options()
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
@@ -42,6 +48,11 @@ def penny_from_web(url: str):
 
 
 def edeka_from_web(url: str):
+    """
+    This function takes the url from edeka-url and returns a BeautifulSoup-object.
+    :param url:
+    :return:
+    """
     options = Options()
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/' \
                  '60.0.3112.50 Safari/537.36'
@@ -70,6 +81,13 @@ def edeka_from_web(url: str):
 
 
 def lidl_from_web(url: str):
+    """
+    This function takes the url from lidl and returns a list of all urls which are different offer-categories.
+    These list of urls can be used to scrape all of the offers from each category, that you can find under
+    the button "Filial-Angebote".
+    :param url:
+    :return:
+    """
     options = Options()
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/' \
                  '60.0.3112.50 Safari/537.36'
@@ -122,6 +140,15 @@ def lidl_from_web(url: str):
 
 
 def lidl_to_pandas(urls: list):
+    """
+    This function takes the list of urls from the lidl_from_web function and scrapes all the single products
+    that are listed there. It creates a pandas dataframe with the product-name, the price, the category and
+    the date found on the category-button. The offers are normally published for the next two weeks.
+    The data will be stored locally in ..//data//grocery_offers//
+    :param urls:
+    :return pd.DataFrame():
+    """
+
     options = Options()
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/' \
                  '60.0.3112.50 Safari/537.36'
@@ -173,6 +200,16 @@ def lidl_to_pandas(urls: list):
 
 
 def penny_to_pandas(soup, cfg: dict):
+    """
+    This function takes the generated soup from the penny_from_web function and creates a pandas dataframe with the
+    product-name, the normal-price, the actual offer-price, the start-date and the end-date of the single offer. After
+    that gets the groundprice per kilo or per liter.
+    The offers are normally published for the next week.
+    The data will be stored locally in ..//data//grocery_offers//
+    :param soup:
+    :param cfg:
+    :return:
+    """
     # date_week = soup.find("div", class_="category-menu__header-week active")
     current_date = soup.find("div", {"data-week": "current"})
     next_date = soup.find("div", {"data-week": "next"})
@@ -333,6 +370,17 @@ def penny_to_pandas(soup, cfg: dict):
 
 
 def edeka_to_pandas(soup, cfg: dict):
+    """
+    This function takes the generated soup from the edeka_from_web function and creates a pandas dataframe with the
+    product-name, the normal-price, the actual offer-price, the start-date and the end-date of the single offer. After
+    that gets the groundprice per kilo or per liter.
+    The offers are normally published for the next week.
+    The data will be stored locally in ..//data//grocery_offers//
+    :param soup:
+    :param cfg:
+    :return:
+    """
+
     offers = soup.find_all("div", class_="css-10didr4")
     date_week = soup.find("span", class_="css-1skty0g").text
     start_date = re.search("vom ([0-9]{2}\.){2}[0-9]{4}", date_week).group()
@@ -435,8 +483,8 @@ def standard_shopping_list_weekly(cfg: dict):
 
 def reader(cfg: dict):
     """
-    This function reads the standar_deinkauf.csv file from cfg-file and all the .csv files from the data_path to check
-    if there are matching strings inside the offers from each grocery store. If there are matching strings
+    This function reads the standar_deinkauf.csv-path file from cfg-file and all the .csv files from the data_path to
+    check if there are matching strings inside the offers from each grocery store. If there are matching strings
     it will write a csv file and return the offerslist dataframe.
 
     :param cfg:
